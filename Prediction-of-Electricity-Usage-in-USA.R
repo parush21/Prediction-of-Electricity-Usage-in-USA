@@ -1,5 +1,8 @@
 ########################################################### DATA IMPORTING 
 library("splitstackshape")
+library("nnet")
+library(data.table)
+
 df1 = read.delim("File1.txt")
 data1 = cSplit(df1, "X1392.19503.0.14", " ")
 names(data1)<- c("ID","time","electricity")
@@ -33,9 +36,7 @@ x <- cbind(x,1:length(x))
 y <- x[x[,1]<500,] ##index of columns we want to keep
 y1 <- y[y[,1]==0,] ##index of columns with no missing values
 y2 <- y[y[,1]!=0,] ##index of columns with missing values and not dropped
-
-final1 = final[,y[,2]] ## dropping variables with too many missing values
-
+y2 <- y2[c(-29,-31,-32),]
 
 for (i in 1:nrow(y2)){
   newdata = cbind(final[,y2[i,2]],final[,y1[,2]])
@@ -43,20 +44,50 @@ for (i in 1:nrow(y2)){
   names(newdata)[1] <- "yy"
   newdata1 <- newdata[1:(nrow(newdata)-y2[i,1]),]
   
-  reg = glm(yy ~., family = "binomial",newdata1)
-  pred = predict(reg,as.data.frame(newdata[(nrow(newdata)+1-y2[i,1]):(nrow(newdata)),2:ncol(newdata),]),type = "response")
   
-  for (j in 1:length(pred)){
-    if (pred[j]>0.5){pred[i] = 1}
-    else (pred [j]=0)
+  if (length(unique(newdata1[,1])) == 2){ #1
+    
+      if (max(newdata1[,1]) == 1){ #2
+          reg = glm(yy ~., family = "binomial",newdata1)
+          pred = predict(reg,as.data.frame(newdata[(nrow(newdata)+1-y2[i,1]):(nrow(newdata)),2:ncol(newdata),]),type = "response")
+          
+              for (j in 1:length(pred)){
+                
+                  if (pred[j]>0.5){pred[i] = 1} #3
+                  else {pred [j] = 0}}#3
+               
+       } else {     #2
+          
+              for (o in 1:nrow(newdata1)){
+                  if ( newdata1[o,1] ==2 ) {newdata1[o,1] =1} else {newdata1[o,1] =0} #4
+              }#4
+          
+      reg = glm(yy ~., family = "binomial",newdata1)
+      pred = predict(reg,as.data.frame(newdata[(nrow(newdata)+1-y2[i,1]):(nrow(newdata)),2:ncol(newdata),]),type = "response")
+      
+      for (j in 1:length(pred)){
+        
+        if (pred[j]>0.5){pred[i] = 1} #5
+        else {pred [j] = 0}}#5
+      
+      }} else {
+  
+      reg <- multinom(yy ~., data = newdata1)
+    pred <- predict(reg, newdata = as.data.frame(newdata[(nrow(newdata)+1-y2[i,1]):(nrow(newdata)),2:ncol(newdata),]), "probs")
+    pred <- as.numeric(colnames(pred)[apply(pred,1,which.max)])
   }
   
-  
   newdata[(nrow(newdata)+1-y2[i,1]):(nrow(newdata)),1] <- pred
-  final1 = final1[order(final1[,y2[i,2]]),]
-  final1[,y2[i,2]] <- newdata[,1]
+  
+  
+  final = final[order(final[,y2[i,2]]),]
+  final[,y2[i,2]] <- newdata[,1]
+  print(i)
 }
 
+final1 = final[,y2[,2]]
+
+table(is.na(final1))  ## make sure there is no NA
 
 
 
