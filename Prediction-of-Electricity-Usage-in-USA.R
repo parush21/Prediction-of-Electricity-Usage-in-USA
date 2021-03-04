@@ -118,8 +118,15 @@ colnames(mydata)[1]<-"yy"
 xx = model.matrix(yy~., mydata)[,-1]
 lambdas_to_try <- 10^seq(-3, 5, length.out = 200)
 
+lasso=gamlr(xx,log(mydata[,1]))
+plot(lasso)
+
+
+lasso.cv = cv.gamlr(xx,log(mydata[,1]))
+plot(lasso.cv)
+
 # Setting alpha = 0 implements ridge regression
-lasso_reg <- cv.glmnet(xx, as.matrix(mydata[,1]), alpha = 1, lambda = lambdas_to_try, standardize = TRUE)
+lasso_reg <- cv.glmnet(xx, as.matrix(log(mydata[,1])), alpha = 1, lambda = lambdas_to_try, standardize = TRUE)
 
 # Plot cross-validation results
 plot(lasso_reg)
